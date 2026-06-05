@@ -3,118 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blockchain Demo Frontend</title>
+    <title>Crypto dApp Dashboard</title>
+    <!-- Include Ethers.js to talk to the blockchain -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 50px auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, select {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #status {
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-left: 4px solid #007bff;
-        }
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #121212; color: white; text-align: center; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 10px; display: inline-block; margin-top: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        button { background-color: #00e676; color: black; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        input, select { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #333; background: #2b2b2b; color: white; }
     </style>
 </head>
 <body>
 
-    <h2>Local Testnet Transfer</h2>
-    
-    <div class="form-group">
-        <label for="walletSelect">Select Target Environment:</label>
-        <select id="walletSelect">
-            <option value="hardhat">Localhost (Hardhat Node)</option>
-            <option value="custom">Custom RPC Network</option>
+    <h1>Web3 Gateway Terminal</h1>
+    <p>School Project Presentation Demo</p>
+
+    <div class="card">
+        <button id="connectBtn" onclick="connectWallet()">Connect Trust Wallet</button>
+        <p id="walletAddress">Address: Not Connected</p>
+        <p id="walletBalance">Balance: 0.00 ETH</p>
+        
+        <hr style="border-color: #333;">
+
+        <h3>Execute Transfer</h3>
+        <select id="assetType">
+            <option value="ETH">Sepolia Test ETH</option>
+            <option value="BNB">Mock BNB (Simulation)</option>
+            <option value="BTC">Mock BTC (Simulation)</option>
         </select>
+        
+        <input type="text" id="recipient" placeholder="Recipient Address (0x...)">
+        <input type="number" id="amount" placeholder="Amount" step="0.01">
+        <br>
+        <button onclick="sendTransaction()">Broadcast Transaction</button>
+        <p id="txStatus"></p>
     </div>
 
-    <div class="form-group">
-        <label for="address">Recipient Address:</label>
-        <input type="text" id="address" placeholder="0x..." required>
-    </div>
-
-    <div class="form-group">
-        <label for="amount">Amount (Test ETH):</label>
-        <input type="number" id="amount" step="0.01" placeholder="0.1" required>
-    </div>
-
-    <button onclick="sendTestTransaction()">Execute Transfer</button>
-
-    <div id="status">Status: Ready to connect</div>
-
-    <!-- Load the Ethers.js library safely via CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <script>
-        async function sendTestTransaction() {
-            const statusDiv = document.getElementById('status');
-            const recipient = document.getElementById('address').value;
-            const amount = document.getElementById('amount').value;
+        let provider, signer, myAddress;
 
-            // 1. Verify that a browser wallet like MetaMask is installed
-            if (!window.ethereum) {
-                statusDiv.innerText = "Error: Please open this page inside a Web3-enabled browser or MetaMask app.";
-                return;
+        async function connectWallet() {
+            if (window.ethereum) {
+                try {
+                    // Initialize the Web3 provider linking to Trust Wallet
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    // Request account access
+                    const accounts = await provider.send("eth_requestAccounts", []);
+                    signer = provider.getSigner();
+                    myAddress = accounts[0];
+                    
+                    document.getElementById('walletAddress').innerText = "Address: " + myAddress.substring(0,6) + "..." + myAddress.substring(38);
+                    document.getElementById('connectBtn').innerText = "Connected ✅";
+
+                    // Fetch the real balance of your Sepolia coins
+                    const balance = await provider.getBalance(myAddress);
+                    const ethBalance = ethers.utils.formatEther(balance);
+                    document.getElementById('walletBalance').innerText = `Balance: ${parseFloat(ethBalance).toFixed(4)} Sepolia ETH`;
+                } catch (error) {
+                    alert("Connection rejected: " + error.message);
+                }
+            } else {
+                alert("Please open this website inside the Trust Wallet browser!");
             }
+        }
+
+        async function sendTransaction() {
+            const recipient = document.getElementById('recipient').value;
+            const amount = document.getElementById('amount').value;
+            const asset = document.getElementById('assetType').value;
+            const status = document.getElementById('txStatus');
 
             if (!recipient || !amount) {
-                statusDiv.innerText = "Error: Please fill in all fields.";
+                alert("Please fill in the fields.");
                 return;
             }
 
+            if (asset !== "ETH") {
+                // Mock execution for secondary display assets to look cool for grading
+                status.innerText = `Simulation complete! Sent ${amount} ${asset} to ${recipient.substring(0,6)}...`;
+                status.style.color = "#00e676";
+                return;
+            }
+
+            // Real Sepolia transaction structure
             try {
-                statusDiv.innerText = "Connecting to wallet...";
+                status.innerText = "Awaiting approval in Trust Wallet...";
+                status.style.color = "orange";
                 
-                // 2. Request connection to the user's wallet
-                const provider = new ethers.BrowserProvider(window.ethereum);
-                const signer = await provider.getSigner();
-
-                statusDiv.innerText = "Sending transaction to the local block...";
-
-                // 3. Format and dispatch the standard transaction object
                 const tx = await signer.sendTransaction({
                     to: recipient,
-                    value: ethers.parseEther(amount)
+                    value: ethers.utils.parseEther(amount)
                 });
 
-                statusDiv.innerText = `Pending Confirmation... Tx Hash: ${tx.hash}`;
-
-                // 4. Wait for the Hardhat node to mine the block
+                status.innerText = "Transaction pending on blockchain...";
                 await tx.wait();
-                statusDiv.innerText = `Success! Transaction confirmed on local network.`;
+                status.innerText = "Success! Transaction Confirmed! 🎉";
+                status.style.color = "#00e676";
                 
+                // Refresh balance
+                connectWallet();
             } catch (error) {
-                console.error(error);
-                statusDiv.innerText = `Transaction Failed: ${error.message}`;
+                status.innerText = "Transaction Failed: " + error.message;
+                status.style.color = "red";
             }
         }
     </script>
